@@ -1,29 +1,18 @@
-from fastapi import FastAPI,HTTPException,Query
-from  src.service import get_tasks,get_task_by_id,create_task,update_task,delete_task
+from fastapi import FastAPI
+from core.db import engine, Base
 
-app=FastAPI()
+# Import all models so Base knows about them
+from models.users_model import User
+from models.project_model import Project
+from models.issue_model import Issue
+
+app = FastAPI(title="Jira Lite")
+
+@app.on_event("startup")
+def startup():
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tables created!")
 
 @app.get("/")
-def read_root():
-    return {"message":"Welcome to the Task Management API"}
-
-@app.get("/tasks")
-def read_tasks():
-    return get_tasks()
-
-@app.get("/tasks/{task_id}")
-def read_task(task_id:int):
-    return get_task_by_id(task_id)
-
-@app.post("/tasks")
-def create_new_task(task:dict):
-    return create_task(task)
-
-@app.put("/tasks/{task_id}")
-def update_existing_task(task_id:int,task:dict):
-    return update_task(task_id,task)
-
-@app.delete("/tasks/{task_id}")
-def delete_existing_task(task_id:int):
-    return delete_task(task_id)
-
+def root():
+    return {"message": "Jira Lite API is running!"}
