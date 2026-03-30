@@ -12,5 +12,3 @@ class Config(BaseSettings):
 
 
 config = Config()
-
-print(config.database_url)
