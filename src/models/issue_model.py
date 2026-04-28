@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String, TIMESTAMP, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from core.db import Base
+
+from src.db.base import Base
 
 class Issue(Base):
     __tablename__ = "issues"

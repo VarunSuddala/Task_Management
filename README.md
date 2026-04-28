@@ -1,182 +1,86 @@
-Task Management API (Jira Lite)
-===============================
+# Task Management API
 
-A FastAPI-based backend for a Jira-like task management system.
+A clean FastAPI backend for a task management system with JWT auth, role-based access control, PostgreSQL, Redis caching, and Alembic migrations.
 
-Current implementation includes:
-- User registration
-- Project creation
-- Basic project listing placeholder
-- Database models for users, projects, and issues
+## Included pieces
 
-Tech Stack
-----------
-- Python 3.12
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- Pydantic
+- Signup, login, and JWT access tokens
+- Admin, manager, and user roles
+- Task create, read, update, delete, and assign endpoints
+- Pagination and filtering for task lists
+- Redis cache for task list reads
+- SQLAlchemy ORM with PostgreSQL
+- Alembic migration setup
+- Dockerfile and Docker Compose
 
-Project Structure
------------------
-backend/
-|- src/
-|  |- main.py
-|  |- core/
-|  |  |- db.py
-|  |- models/
-|  |  |- users_model.py
-|  |  |- project_model.py
-|  |  |- issue_model.py
-|  |- schemas/
-|  |  |- user_schema.py
-|  |  |- project_schema.py
-|  |  |- issue_schema.py
-|  |- routers/
-|  |  |- user_router.py
-|  |  |- project_router.py
-|  |  |- issue_router.py
-|  |- services/
-|  |  |- user_service.py
-|  |  |- project_service.py
-|- myenv/
-|- README.md
+## Folder structure
 
-Database Configuration
-----------------------
-Database URL is currently hardcoded in `src/core/db.py`:
+- `src/main.py` wires the FastAPI app, routers, and global exception handlers.
+- `src/core/` stores settings.
+- `src/db/` stores the SQLAlchemy base, database session, and Redis client.
+- `src/auth/` stores password hashing, JWT helpers, and auth dependencies.
+- `src/models/` stores ORM models.
+- `src/schemas/` stores request and response schemas.
+- `src/services/` stores the business logic.
+- `src/routers/` stores HTTP routes.
+- `src/utils/` stores reusable helpers and exception handlers.
+- `alembic/` stores migration configuration and the initial schema migration.
 
-`postgresql://postgres:varun@localhost/jira-lite`
+## Run with Docker
 
-Make sure:
-1. PostgreSQL is running.
-2. Database `jira-lite` exists.
-3. Username/password in URL are valid for your machine.
+From the `backend/` folder:
 
-Quick Start
------------
-1. Go to project root:
-
-	 `cd backend`
-
-2. Activate virtual environment:
-
-	 `source myenv/bin/activate`
-
-3. Run server from `src` folder:
-
-	 `cd src`
-
-	 `uvicorn main:app --reload`
-
-4. Open docs:
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
-
-API Endpoints
--------------
-
-Base URL: `http://127.0.0.1:8000`
-
-Health
-------
-- `GET /`
-
-Response:
-```json
-{
-	"message": "Jira Lite API is running!"
-}
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-Users
------
-- `POST /users/register`
+Then open `http://localhost:8000/docs`.
 
-Request body:
-```json
-{
-	"username": "varun",
-	"email": "varun@example.com",
-	"password": "yourpassword",
-	"role": "member",
-	"is_active": true
-}
+## Local run without Docker
+
+```bash
+cd backend
+source myenv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
+uvicorn src.main:app --reload
 ```
 
-- `POST /users/login` (placeholder)
-- `GET /users/me` (placeholder)
+## API flow
 
-Projects
---------
-- `GET /project/list` (placeholder)
-- `POST /project/create`
+1. A user signs up at `/auth/signup`.
+2. The password is hashed before it is stored in PostgreSQL.
+3. Login at `/auth/login` verifies the password and returns a JWT token.
+4. Protected endpoints read the token from the `Authorization: Bearer <token>` header.
+5. Route dependencies check the user role before allowing the action.
 
-Request body:
-```json
-{
-	"key": "JIRA",
-	"name": "Jira Lite",
-	"description": "Task management backend",
-	"owner_id": 1
-}
-```
+## JWT flow
 
-Important:
-- `owner_id` must exist in `users` table.
-- If owner does not exist, API returns `404 Owner user not found`.
+- Signup stores only a password hash.
+- Login verifies the hash and issues a signed access token.
+- The token includes the user id in `sub` and the role in `role`.
+- `/auth/me` reads the token and returns the current user.
 
-Core Data Models
-----------------
+## Redis caching logic
 
-User
-- id (PK)
-- username (unique)
-- email (unique)
-- password
-- role
-- is_active
-- created_at
-- updated_at
+- The task list endpoint builds a cache key from the viewer, page, page size, and filters.
+- If Redis already has that key, the API returns the cached list.
+- On task create, update, assign, or delete, the app clears task list cache keys.
+- This keeps reads fast while avoiding stale task list data.
 
-Project
-- id (PK)
-- key (unique, max 10)
-- name
-- description
-- owner_id (FK -> users.id)
-- status
-- created_at
-- updated_at
+## Important endpoints
 
-Issue
-- id (PK)
-- title
-- description
-- type
-- status
-- priority
-- project_id (FK -> projects.id)
-- reporter_id (FK -> users.id)
-- assignee_id (FK -> users.id)
-- created_at
-- updated_at
+- `POST /auth/signup`
+- `POST /auth/login`
+- `GET /auth/me`
+- `GET /tasks`
+- `POST /tasks`
+- `PATCH /tasks/{task_id}`
+- `POST /tasks/{task_id}/assign`
+- `DELETE /tasks/{task_id}`
+- `GET /users` for admin only
 
-Current Limitations
--------------------
-- Passwords are stored as plain text (must be hashed before production use).
-- Login and current-user endpoints are placeholders.
-- Issue router and issue schema are not implemented yet.
-- Project list endpoint is a placeholder.
-- No authentication/authorization yet.
-
-Suggested Next Improvements
----------------------------
-1. Add password hashing (bcrypt/passlib).
-2. Implement JWT-based auth for login and protected routes.
-3. Complete issue schema/router/service.
-4. Add response models for all endpoints.
-5. Move DB URL to environment variables using `.env`.
-6. Add Alembic migrations.
 
 
